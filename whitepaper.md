@@ -13,7 +13,7 @@
 
 | Role | Start here | Priority sections | Skip or skim |
 |------|-----------|-------------------|-------------|
-| **CTO / VP Engineering** | Executive Summary → §1 Business Case | §2 Problem Statement, §10 Limitations, §11 Getting Started: Implementation Roadmap | Skim §5 Proposed Approach (comparison table), §7 Implementation Walkthrough, §8 Evaluation and Operational Impact |
+| **CTO** | Executive Summary → §1 Business Case | §2 Problem Statement, §10 Limitations, §11 Getting Started: Implementation Roadmap | Skim §5 Proposed Approach (comparison table), §7 Implementation Walkthrough, §8 Evaluation and Operational Impact |
 | **NOC Manager** | §1 Business Case → §8 Evaluation and Operational Impact | §6 System Design (especially NOC Integration subsection), §9 Production Considerations, §11 Getting Started: Implementation Roadmap | §3 Data Requirements, §4 Background and Related Work, §5 Proposed Approach |
 | **RF Engineer** | §3 Data Requirements → §5 Proposed Approach | §6 System Design, §7 Implementation Walkthrough, §4 Background and Related Work | §1 Business Case, §9 Production Considerations |
 | **Data Scientist / ML Engineer** | §5 Proposed Approach → §7 Implementation Walkthrough | §3 Data Requirements, §6 System Design, §8 Evaluation and Operational Impact, Companion Code | §1 Business Case |
@@ -106,8 +106,8 @@ These are consistent with academic benchmarks: supervised tree ensembles achieve
 | **NOC Analyst** | Investigates 3–5 prioritised, explained alerts per shift instead of triaging 400+ raw alarms | Recovers 20+ hours per shift for proactive monitoring and genuine fault resolution |
 | **RF Engineer** | Receives early warning of gradual degradation patterns before customer complaints arrive | Reduces reactive field dispatch; enables scheduled maintenance rather than emergency callouts |
 | **NOC Manager** | Can set operationally meaningful SLAs: "detect 90% of real degradations within 5 minutes" | Measurable service quality targets replace vague threshold calibration arguments |
-| **CFO / VP Operations** | Reduces OPEX on NOC staffing and false alarm overhead; reduces SLA penalty exposure | **[DERIVED]** Based on the cost model above, a 70% false alarm reduction saves approximately A$5.21M/year (70% × A$7.45M baseline — see §1 sensitivity table for derivation) at a 10,000-cell operator (A$85/hr analyst, 500 alarms/shift baseline), excluding downstream revenue protection benefits; savings range from A$3.81M/year at A$62/hr to A$11.33M/year at A$185/hr analyst rate. *(Note: NOC headcount savings typically materialise as avoided-cost (preventing headcount growth) or productivity reallocation, not direct headcount reduction.)* |
-> **Key takeaway:** The business case for ML anomaly detection in RAN is not primarily a revenue story — it is an OPEX story. The investment is justified by analyst time recovered, MTTR reduced, and SLA exposure avoided. These benefits are measurable from the first month of production operation.
+| **CFO / VP Operations** | Reduces OPEX on NOC staffing and false alarm overhead; reduces SLA penalty exposure | Based on the cost model above, a 70% false alarm reduction saves approximately A$5.21M/year (70% × A$7.45M baseline — see §1 sensitivity table for derivation) at a 10,000-cell operator (A$85/hr analyst, 500 alarms/shift baseline), excluding downstream revenue protection benefits; savings range from A$3.81M/year at A$62/hr to A$11.33M/year at A$185/hr analyst rate. *(Note: NOC headcount savings typically materialise as avoided-cost (preventing headcount growth) or productivity reallocation, not direct headcount reduction.)* |
+**Key takeaway:** The business case for ML anomaly detection in RAN is not primarily a revenue story — it is an OPEX story. The investment is justified by analyst time recovered, MTTR reduced, and SLA exposure avoided. These benefits are measurable from the first month of production operation.
 ---
 
 ## 2. Problem Statement
