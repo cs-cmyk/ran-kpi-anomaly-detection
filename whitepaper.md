@@ -235,126 +235,45 @@ graph TB
     classDef green fill:#27AE60,stroke:#1E8449,color:#fff
     classDef orange fill:#E67E22,stroke:#CA6F1E,color:#fff
     classDef gray fill:#95A5A6,stroke:#717D7E,color:#fff
-    classDef red fill:#C0392B,stroke:#922B21,color:#fff
 
-    subgraph RAN["🗼 RAN LAYER — Cell Sites (10K–90K cells)"]
-        gNB["gNB / O-DU / O-CU<br/>─────────────────<br/>E2 Agent<br/>PM Counter Collection<br/>TS 28.552 / TS 32.425"]
-        eNB["eNB (LTE)<br/>─────────────────<br/>PM Counter Collection<br/>TS 32.425"]
+    subgraph RAN["RAN LAYER"]
+        gNB["gNB / eNB - PM Counter Collection"]:::gray
     end
 
-    subgraph EDGE["⚡ NEAR-RT RIC LAYER — Edge / Regional (latency &lt; 5 min)"]
-        direction TB
-        xApp["KPM Monitor xApp<br/>─────────────────<br/>E2SM-KPM v03.00 (Key Performance Measurements) subscriptions<br/>E2 Service Model — Key Performance Measurements<br/>1s–1min granularity"]:::green
-
-        subgraph KAFKA["Apache Kafka Cluster"]
-            T1["Topic: ran.kpi.raw<br/>(Avro, ~50 counters/cell/min)"]:::blue
-            T2["Topic: ran.kpi.validated"]:::blue
-            T3["Topic: ran.anomaly.scores"]:::blue
-            T4["Topic: ran.alerts"]:::orange
-        end
-
-        subgraph FLINK["Apache Flink Streaming Pipeline"]
-            VAL["① Validator<br/>(Pandera schema check)<br/>→ DLQ on error"]:::gray
-            FE["② Feature Engineering<br/>Rolling stats: 1h/4h/24h<br/>Peer-group z-score<br/>DoD / WoW ratios"]:::green
-            INF["③ Anomaly Scoring<br/>ONNX Runtime (embedded)<br/>Phase 1: Isolation Forest<br/>Phase 2: RF + LSTM-VAE<br/>Phase 3: Ensemble"]:::green
-            AGG["④ Hierarchical Aggregation<br/>Sector→Cell→Site→Cluster<br/>Alert promotion / suppression"]:::orange
-        end
-
-        ALERT_GEN["NOC Alert Card Generator<br/>─────────────────<br/>SHAP → operational language<br/>Top-3 contributing KPIs<br/>Fault category classification"]:::orange
-        A1["A1 Policy Interface<br/>threshold adjustment feedback"]:::gray
+    subgraph EDGE["NEAR-RT RIC LAYER - Edge"]
+        xApp["KPM Monitor xApp - E2SM-KPM subscriptions"]:::green
+        KAFKA["Kafka - ran.kpi.raw, ran.alerts"]:::blue
+        FLINK["Flink Pipeline - Validate, Feature Eng, Score, Aggregate"]:::green
+        ALERT["Alert Card Generator - SHAP explanations"]:::orange
     end
 
-    subgraph SMO["☁️ SMO + Non-RT RIC LAYER — Cloud / Central"]
-        direction TB
-        %% Note: Non-RT RIC: model training, A1 policy | SMO: FCAPS, O1 termination.
-        subgraph INGEST["O1 Ingestion Path (Batch — 15 min ROPs)"]
-            O1_COL["O1 PM File Collector<br/>TS 32.435 XML<br/>SFTP (production standard)<br/>YANG-push (O-RAN WG10, emerging)"]:::blue
-            PARSER["PM File Parser<br/>XML → Avro normalization<br/>KPI Semantic Layer lookup"]:::blue
-        end
-
-        subgraph FEATSTORE["Feature Store (Feast)"]
-            FS_ON["Online Store<br/>Redis<br/>&lt; 5ms lookup"]:::blue
-            FS_OFF["Offline Store<br/>Parquet / S3<br/>~720M rows/day @ 10K cells"]:::blue
-        end
-
-        subgraph MLOPS["MLOps Platform"]
-            MLFLOW["MLflow<br/>Experiment tracking<br/>Model registry (ONNX artifacts)"]:::green
-            RAYTRAIN["Ray Train<br/>Distributed per-cluster training<br/>10–20 cell-type clusters"]:::green
-            AIRFLOW["Airflow<br/>Retraining DAGs<br/>Event-triggered + scheduled"]:::gray
-            EVIDENTLY["Evidently AI<br/>PSI drift monitoring<br/>Grafana dashboards"]:::orange
-        end
-
-        subgraph LABELING["Semi-Automated Labeling Pipeline"]
-            TICKET["Trouble Ticket Correlation<br/>TMF642 Alarm API"]:::orange
-            TSNE["tSNE Cluster Review<br/>RF Engineer UI"]:::green
-            ACTIVE["Active Learning Loop<br/>Priority queue for human review"]:::green
-        end
-
-        PEERGRP["Peer Group Registry<br/>─────────────────<br/>DBSCAN clustering<br/>Dynamic update on topology change<br/>(vendor / band / urban class)"]:::blue
-        SEMANTIC["KPI Semantic Layer<br/>─────────────────<br/>Vendor counter normalization<br/>Ericsson / Nokia / Samsung maps<br/>Formula registry (versioned)"]:::blue
-        TOPOLOGY["Topology Change Listener<br/>─────────────────<br/>New cell / refarming / SW upgrade<br/>→ Retraining trigger taxonomy"]:::gray
+    subgraph SMO["SMO + NON-RT RIC - Cloud"]
+        O1["O1 PM File Collector - 15-min batch path"]:::blue
+        FEAST["Feast Feature Store - Online Redis, Offline Parquet"]:::blue
+        MLOPS["MLOps - MLflow, Ray Train, Airflow, Evidently"]:::green
+        LABEL["Labeling Pipeline - Ticket correlation, tSNE, Active learning"]:::green
+        PEER["Peer Group Registry - DBSCAN clustering"]:::blue
     end
 
-    subgraph NOC["🖥️ NOC INTEGRATION LAYER"]
-        DASH["NOC Dashboard<br/>Anomaly map / drill-down<br/>Alert card with SHAP explanation"]:::orange
-        SNOW["ServiceNow / BMC Remedy<br/>Automated ticket creation<br/>via webhook"]:::orange
-        TMFAPI["TM Forum Open APIs<br/>TMF642 Alarm Management<br/>TMF628 Performance Management"]:::gray
-        FEEDBACK["NOC Feedback Loop<br/>True / False positive marking<br/>→ weekly retraining input"]:::orange
+    subgraph NOC["NOC INTEGRATION"]
+        DASH["Dashboard + ServiceNow + TM Forum APIs"]:::orange
+        FB["Feedback Loop - TP/FP labels"]:::orange
     end
 
-    %% RAN to Edge flows
-    gNB -->|"E2SM-KPM Indication<br/>1s–1min | Avro"| xApp
-    eNB -->|"O1 PM Files<br/>15min ROPs | XML"| O1_COL
-    gNB -->|"O1 PM Files<br/>15min ROPs | XML"| O1_COL
-
-    %% Edge streaming path
-    xApp -->|"raw KPI events"| T1
-    T1 --> VAL
-    VAL -->|"validated events"| T2
-    T2 --> FE
-    FE --> INF
-    INF -->|"anomaly scores"| T3
-    T3 --> AGG
-    AGG -->|"promoted alerts"| T4
-    T4 --> ALERT_GEN
-    ALERT_GEN --> A1
-
-    %% O1 batch path into Kafka
-    O1_COL --> PARSER
-    PARSER -->|"normalized Avro<br/>→ ran.kpi.raw"| T1
-
-    %% Feature store interactions
-    FE <-->|"push / lookup<br/>online features"| FS_ON
-    AIRFLOW -->|"offline materialization<br/>Parquet writes"| FS_OFF
-    FS_OFF -->|"training datasets"| RAYTRAIN
-
-    %% MLOps flows
-    RAYTRAIN -->|"ONNX model artifacts"| MLFLOW
-    MLFLOW -->|"model deployment<br/>to Flink ONNX Runtime"| INF
-    T3 -->|"score distributions"| EVIDENTLY
-    TOPOLOGY -->|"change events"| AIRFLOW
-    PEERGRP -->|"peer group features"| FE
-
-    %% Labeling pipeline
-    T4 -->|"alert candidates"| TICKET
-    TICKET --> TSNE
-    TSNE --> ACTIVE
-    ACTIVE -->|"labeled anomaly events"| RAYTRAIN
-
-    %% NOC integration
-    ALERT_GEN --> TMFAPI
-    TMFAPI --> DASH
-    TMFAPI --> SNOW
-    DASH --> FEEDBACK
-    FEEDBACK -->|"TP/FP labels<br/>weekly batch"| LABELING
-
-    %% Legend
-    subgraph LEGEND["LEGEND"]
-        L1["● Data / Storage"]:::blue
-        L2["● ML / Analytics"]:::green
-        L3["● Operational / Monitoring"]:::orange
-L4["● Infrastructure / Platform"]:::gray
-    end
+    gNB -->|"E2 streaming 1s-1min"| xApp
+    gNB -->|"O1 PM files 15-min ROPs"| O1
+    xApp --> KAFKA
+    O1 -->|"normalized Avro"| KAFKA
+    KAFKA --> FLINK
+    FLINK <-->|"online features"| FEAST
+    FLINK -->|"anomaly scores"| ALERT
+    PEER -->|"peer group z-scores"| FLINK
+    MLOPS -->|"ONNX models"| FLINK
+    ALERT --> DASH
+    DASH --> FB
+    FB -->|"weekly labels"| LABEL
+    LABEL -->|"labeled data"| MLOPS
+    KAFKA -->|"score distributions"| MLOPS
 ```
 
 ---
@@ -520,109 +439,68 @@ A key KPI tracked in the ensemble is the bearer setup success rate (`drb_setup_s
 **Figure 2** — Data Flow Pipeline — Hot Path vs. Cold Path
 
 ```mermaid
-graph LR
+graph TD
     classDef blue fill:#4A90D9,stroke:#2C6FAC,color:#fff
     classDef green fill:#27AE60,stroke:#1E8449,color:#fff
     classDef orange fill:#E67E22,stroke:#CA6F1E,color:#fff
     classDef gray fill:#95A5A6,stroke:#717D7E,color:#fff
 
-    subgraph SRC["SOURCE SYSTEMS"]
-        gNB2["gNB / O-DU<br/>E2 Agent"]:::gray
-        PMF["PM File Server<br/>TS 32.435 XML<br/>15-min ROPs"]:::gray
+    subgraph Sources
+        gNB["gNB / O-DU E2 Agent"]:::gray
+        PMF["PM File Server O1 XML"]:::gray
     end
 
-    subgraph HOT["⚡ HOT PATH — E2 Streaming (sub-5-min latency)"]
-        direction LR
-        E2SUB["E2SM-KPM<br/>Subscription<br/>(1s–1min)"]:::blue
-        KR["Kafka Topic<br/>ran.kpi.raw<br/>Avro schema"]:::blue
-        FVAL["Flink: Validate<br/>Pandera checks<br/>→ DLQ"]:::gray
-        FFE["Flink: Feature Eng.<br/>─────────────<br/>Rolling windows:<br/>1h / 4h / 24h<br/>Peer z-score<br/>DoD / WoW ratio<br/>Rate-of-change<br/>TOD / DOW encoding"]:::green
-        FONL["Feast Online<br/>Redis<br/>feature vectors<br/>&lt; 5ms lookup"]:::blue
-        FINF["Flink: Inference<br/>ONNX Runtime<br/>─────────────<br/>score ∈ [-1, 0]<br/>contributing KPIs<br/>(SHAP top-3)"]:::green
-        KAS["Kafka Topic<br/>ran.anomaly.scores<br/>Avro + score field"]:::blue
-        HAGG["Hierarchical<br/>Aggregation<br/>Sector→Cell<br/>→Site→Cluster"]:::orange
-        KAL["Kafka Topic<br/>ran.alerts<br/>enriched alert JSON"]:::orange
+    subgraph Hot Path - E2 Streaming sub-5-min
+        E2SUB["E2SM-KPM Subscription 1s-1min"]:::blue
+        KR["Kafka ran.kpi.raw"]:::blue
+        FVAL["Flink Validate"]:::gray
+        FFE["Flink Feature Engineering"]:::green
+        FONL["Feast Online Store Redis"]:::blue
+        FINF["Flink Inference ONNX Runtime"]:::green
+        KAS["Kafka ran.anomaly.scores"]:::blue
+        HAGG["Hierarchical Aggregation"]:::orange
+        KAL["Kafka ran.alerts"]:::orange
     end
 
-    subgraph COLD["🧊 COLD PATH — O1 Batch (15-min → 2-hour lag)"]
-        direction LR
-        SFTP["SFTP / YANG-Push<br/>O1 interface"]:::blue
-        PARSE["PM Parser<br/>XML → Avro<br/>KPI Semantic Layer<br/>vendor normalization"]:::blue
-        KR2["Kafka Topic<br/>ran.kpi.raw<br/>(same topic as hot path)"]:::blue
+    subgraph Cold Path - O1 Batch 15-min to 2-hour lag
+        SFTP["SFTP / YANG-Push"]:::blue
+        PARSE["PM Parser XML to Avro"]:::blue
     end
 
-    subgraph TRAIN["🎓 TRAINING PATH (Offline / Scheduled)"]
-        direction LR
-        OFFST["Feast Offline Store<br/>Parquet / S3<br/>720M rows/day<br/>@ 10K cells"]:::blue
-        SPLIT["Temporal Split<br/>Train: days 1-20<br/>Val: days 21-25<br/>Test: days 26-30"]:::green
-        M1["Phase 1:<br/>Isolation Forest<br/>(sklearn → ONNX)"]:::green
-        M2["Phase 2:<br/>Random Forest<br/>XGBoost<br/>(sklearn → ONNX)"]:::green
-        M3["Phase 2–3:<br/>LSTM-VAE<br/>(PyTorch → ONNX)"]:::green
-        ENS["Phase 3:<br/>Ensemble Combiner<br/>weighted voting"]:::green
-        REG["MLflow Model Registry<br/>ONNX artifacts<br/>versioned + staged"]:::blue
+    subgraph Training Path - Offline
+        OFFST["Feast Offline Store Parquet"]:::blue
+        SPLIT["Temporal Split"]:::green
+        MODELS["IF / RF / LSTM-VAE"]:::green
+        ENS["Ensemble Combiner"]:::green
+        REG["MLflow Model Registry"]:::blue
     end
 
-    subgraph MON["📊 MONITORING & FEEDBACK"]
-        direction LR
-        EVID["Evidently AI<br/>PSI drift scores<br/>feature distribution Δ"]:::orange
-        PROM["Prometheus<br/>infra metrics<br/>inference latency p99"]:::orange
-        NFEED["NOC Feedback<br/>TP / FP labels<br/>analyst markings"]:::orange
-        LABEL["Labeling Pipeline<br/>trouble-ticket correlation<br/>+ tSNE clustering<br/>+ active learning"]:::green
-        RETRIG["Retraining Trigger<br/>─────────────────<br/>statistical drift PSI &gt; 0.2<br/>topology change event<br/>weekly scheduled"]:::orange
+    subgraph NOC Integration
+        DASH["NOC Dashboard"]:::orange
+        SNOW["ServiceNow"]:::orange
     end
 
-    subgraph NOC2["🖥️ NOC / BSS/OSS"]
-        DASH2["NOC Dashboard<br/>alert map + drill-down"]:::orange
-        SNOW2["ServiceNow<br/>auto-ticket via webhook"]:::orange
-        TMFA["TMF642 / TMF628<br/>Open API"]:::gray
+    subgraph Monitoring and Feedback
+        EVID["Evidently Drift Monitor"]:::orange
+        NFEED["NOC Feedback TP/FP"]:::orange
+        LABEL["Labeling Pipeline"]:::green
     end
 
-    %% Hot path flow
-    gNB2 -->|"E2SM-KPM v03.00 Indication<br/>Avro, 1-min granularity"| E2SUB
-    E2SUB --> KR
-    KR --> FVAL
-    FVAL -->|"validated Avro"| FFE
-    FFE <-->|"push / lookup<br/>feature vectors"| FONL
-    FFE -->|"feature vector<br/>float32[150]"| FINF
-    FINF -->|"score + SHAP<br/>Avro"| KAS
-    KAS --> HAGG
-    HAGG -->|"enriched alert JSON"| KAL
+    gNB --> E2SUB --> KR --> FVAL --> FFE
+    FFE <--> FONL
+    FFE --> FINF --> KAS --> HAGG --> KAL
 
-    %% Cold path merges into hot path topic
-    PMF -->|"XML files<br/>every 15 min"| SFTP
-    SFTP --> PARSE
-    PARSE -->|"normalized Avro<br/>injected into"| KR2
-    KR2 -.->|"same topic"| KR
+    PMF --> SFTP --> PARSE --> KR
 
-    %% Training path
-    FFE -->|"materialized features"| OFFST
-    OFFST --> SPLIT
-    SPLIT --> M1
-    SPLIT --> M2
-    SPLIT --> M3
-    M1 & M2 & M3 --> ENS
-    M1 & M2 & M3 & ENS -->|"ONNX artifacts"| REG
-    REG -->|"model deployment"| FINF
+    FFE --> OFFST --> SPLIT --> MODELS --> ENS
+    MODELS --> REG
+    ENS --> REG --> FINF
 
-    %% NOC output
-    KAL --> TMFA
-    TMFA --> DASH2
-    TMFA --> SNOW2
+    KAL --> DASH
+    KAL --> SNOW
 
-    %% Feedback loops
-    DASH2 -->|"TP/FP markings"| NFEED
-    KAS -->|"score stream"| EVID
-    EVID -->|"drift alerts"| RETRIG
-    NFEED --> LABEL
-    LABEL -->|"labeled events"| OFFST
-    RETRIG -->|"trigger DAG"| SPLIT
-
-    %% Annotations
-    %% NOTE: VES = fault management events only (alarms, heartbeats) — not used for PM counter delivery
-    style HOT fill:#EBF5FB,stroke:#2980B9
-    style COLD fill:#EAF4FB,stroke:#85C1E9
-style TRAIN fill:#EAFAF1,stroke:#27AE60
-    style MON fill:#FEF9E7,stroke:#F39C12
+    DASH --> NFEED --> LABEL --> OFFST
+    KAS --> EVID --> SPLIT
 ```
 > **Key takeaway:** Start with Isolation Forest. It requires nothing you do not already have — no labels, no GPUs, no deep learning expertise — and it will outperform every static threshold on your network from day one. The supervised and deep learning layers are not prerequisites; they are the reward for operating the system long enough to accumulate labeled data.
 
