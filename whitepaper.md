@@ -588,6 +588,21 @@ Additional considerations:
 
 **Missing data indicators.** Binary flags for each KPI indicating whether the value was imputed (counter reset, file delivery failure) vs. observed.
 
+**Feature summary** — all features computed per cell sector per ROP by `02_feature_engineering.py`:
+
+| Feature Group | Count | Description | Code Function |
+|---|---|---|---|
+| Rolling statistics (mean, std, min, max) | 84 | 7 Tier-1 KPIs x 4 stats x 3 windows (1h, 4h, 24h) | `compute_rolling_features()` |
+| Peer-group z-scores | 7 | Z-score of each KPI relative to peer group distribution | `add_peer_group_features()` |
+| Day-over-day delta ratios | 7 | KPI value vs. same ROP yesterday | `compute_rolling_features()` |
+| Week-over-week delta ratios | 7 | KPI value vs. same ROP last week | `compute_rolling_features()` |
+| Rate-of-change (1st difference) | 7 | First difference over last 3 ROPs | `compute_rolling_features()` |
+| Rate-of-change (2nd difference) | 7 | Second difference over last 3 ROPs | `compute_rolling_features()` |
+| Temporal encoding | 4 | sin/cos of hour-of-day + sin/cos of day-of-week | `encode_temporal_features()` |
+| Missing data flags | 7 | Binary flag per KPI: imputed vs. observed | `compute_rolling_features()` |
+| Tier-2 KPI features | 20 | 2 Tier-2 KPIs x (4 stats x 3 windows + z-score + DoD + WoW + RoC) | Same functions |
+| **Total** | **~150** | **Input dimension to ONNX model** | |
+
 Flink writes directly to Redis using HSET with a Feast-compatible key schema — the recommended approach for sub-second feature serving latency. Historical features are materialised to the offline store (Parquet on object storage) for model training and drift monitoring. The Analytics rApp consumes from the offline store to perform periodic model retraining and drift monitoring, and publishes updated model versions and sensitivity policy adjustments back through the A1 interface.
 
 > **Alternative:** Feast's native Kafka consumer adds 200–500ms materialisation latency. Choose this path only when Feast's point-in-time query API is needed for offline training dataset generation; otherwise, the direct Redis HSET write is faster and operationally simpler.
