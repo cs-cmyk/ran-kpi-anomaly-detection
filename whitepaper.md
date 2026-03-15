@@ -756,7 +756,7 @@ erDiagram
         string vendor_counter_name "3GPP measurement family (TS 28.552 ref)"
         string aggregation_method "sum|avg|last_sample"
         string valid_range "e.g. 0.0 to 1.0"
-        integer 3gpp_ts "28552 or 32425"
+        integer ts_reference "28552 or 32425"
         string formula "numerator/denominator"
     }
 
@@ -882,7 +882,7 @@ sequenceDiagram
         Note over Flink, ONNX: STAGE 3: Anomaly Scoring (~5ms)
         Flink->>ONNX: feature_vector float32[150]<br/>cell_id, model_version
         ONNX->>ONNX: Inference pass<br/>Phase 1: Isolation Forest (0.19ms)<br/>Phase 2: RF + LSTM-VAE (2.5ms)<br/>Phase 3: Ensemble (5ms max)
-        Note over ONNX: Phase 1: w=(1.0, 0.0, 0.0) — Isolation Forest only; Phase 2+: weights tuned on validation set
+        Note over ONNX: Phase 1: w=(1.0, 0.0, 0.0) Isolation Forest only. Phase 2 onward: weights tuned on validation set
         ONNX-->>Flink: Per-tier sigmoid normalization (pre-processing step)<br/>shap_values float32[150]<br/>top3_contributing_kpis<br/>Example: anomaly_score: 0.87 → Major (≥ 0.75), anomaly_score: 0.93 → Critical (≥ 0.90)
         Flink->>Flink: Score convention (three stages):<br/>Raw IF decision_function: ∈ ℝ (negative = more anomalous)<br/>After per-tier sigmoid normalization: ∈ [0, 1] (higher = more anomalous)<br/>Final AnomalyScore: weighted average of normalized tier scores ∈ [0, 1]
         Note over Flink: Score published to ran.anomaly.scores<br/>[t=~80ms cumulative]
@@ -1352,57 +1352,56 @@ Each phase is gated by a label availability condition:
 
 ```mermaid
 gantt
-    title RAN KPI Anomaly Detection — Implementation Roadmap
+    title RAN KPI Anomaly Detection - Implementation Roadmap
     dateFormat  YYYY-MM-DD
     axisFormat  %b %d
 
-    section 🔧 Phase 0: Foundation / Pre-Work (Weeks 1–4)
-    Data pipeline audit & PM counter inventory      :p0a, 2025-01-06, 7d
-    KPI semantic layer + vendor normalization maps  :p0b, 2025-01-06, 10d
-    Kafka + Flink infrastructure setup              :p0c, 2025-01-08, 10d
-    E2SM-KPM or O1 ingestion connector              :p0d, 2025-01-13, 7d
-    Peer group registry design + initial clustering :p0e, 2025-01-15, 7d
-    ★ QUICK WIN: 100-cell notebook demo (Wk 4)     :milestone, m0, 2025-01-27, 1d
+    section Phase 0 - Foundation (Weeks 1-4)
+    Data pipeline audit and PM counter inventory     :p0a, 2025-01-06, 7d
+    KPI semantic layer and vendor normalization maps  :p0b, 2025-01-06, 10d
+    Kafka and Flink infrastructure setup              :p0c, 2025-01-08, 10d
+    E2SM-KPM or O1 ingestion connector               :p0d, 2025-01-13, 7d
+    Peer group registry design and clustering         :p0e, 2025-01-15, 7d
+    QUICK WIN 100-cell notebook demo                  :milestone, m0, 2025-01-27, 1d
 
-    section 🤖 Phase 1: Isolation Forest Only (Weeks 4–10)
-    Synthetic data generation + baseline tests      :p1a, 2025-01-27, 7d
-    Feature engineering pipeline (rolling stats)   :p1b, 2025-01-27, 10d
-    Isolation Forest training (per cell cluster)   :p1c, 2025-02-03, 7d
-    ONNX export + Flink ONNX Runtime integration   :p1d, 2025-02-03, 7d
-    Shadow mode deployment (1 regional cluster)    :p1e, 2025-02-10, 14d
-    NOC dashboard integration (read-only)          :p1f, 2025-02-10, 10d
-    Alert suppression: maintenance window filter   :p1g, 2025-02-12, 7d
-    ★ GATE 1: Shadow precision ≥ 0.70 (Wk 8)      :milestone, m1, 2025-02-24, 1d
+    section Phase 1 - Isolation Forest (Weeks 4-10)
+    Synthetic data generation and baseline tests      :p1a, 2025-01-27, 7d
+    Feature engineering pipeline                      :p1b, 2025-01-27, 10d
+    Isolation Forest training per cell cluster        :p1c, 2025-02-03, 7d
+    ONNX export and Flink Runtime integration         :p1d, 2025-02-03, 7d
+    Shadow mode deployment 1 regional cluster         :p1e, 2025-02-10, 14d
+    NOC dashboard integration read-only               :p1f, 2025-02-10, 10d
+    Alert suppression maintenance window filter       :p1g, 2025-02-12, 7d
+    GATE 1 Shadow precision at least 0.70             :milestone, m1, 2025-02-24, 1d
 
-    section 📈 Phase 2: Random Forest Added (Months 3–6)
-    Labeling pipeline: trouble-ticket correlation  :p2a, 2025-03-03, 21d
-    tSNE-based semi-supervised labeling UI         :p2b, 2025-03-10, 14d
-    Supervised RF/XGBoost training                 :p2c, 2025-03-24, 14d
-    Hierarchical alert aggregation engine          :p2e, 2025-04-07, 14d
-    Canary rollout: 1 full region (~5K cells)      :p2f, 2025-04-07, 21d
-    Feast online store for real-time feature lookup:p2g, 2025-04-14, 14d
-    Drift detection: Evidently PSI monitoring      :p2h, 2025-04-21, 14d
-    NOC feedback loop + TP/FP label capture        :p2i, 2025-04-28, 14d
-    ★ GATE 2: Precision ≥ 0.80, FA reduction ≥ 60% :milestone, m2, 2025-05-19, 1d
+    section Phase 2 - Random Forest (Months 3-6)
+    Labeling pipeline trouble-ticket correlation      :p2a, 2025-03-03, 21d
+    tSNE-based semi-supervised labeling UI            :p2b, 2025-03-10, 14d
+    Supervised RF and XGBoost training                :p2c, 2025-03-24, 14d
+    Hierarchical alert aggregation engine             :p2e, 2025-04-07, 14d
+    Canary rollout 1 full region 5K cells             :p2f, 2025-04-07, 21d
+    Feast online store for real-time lookup           :p2g, 2025-04-14, 14d
+    Drift detection Evidently PSI monitoring          :p2h, 2025-04-21, 14d
+    NOC feedback loop and TP FP label capture         :p2i, 2025-04-28, 14d
+    GATE 2 Precision at least 0.80 FA reduced 60pct  :milestone, m2, 2025-05-19, 1d
 
-    section 🚀 Phase 3: LSTM-VAE + Shadow Deployment (Months 6–12)
-    %% Note: Phase 1–2 use simplified batch ingestion; Phase 3 migrates to full streaming pipeline.
-    LSTM-VAE training per cell-type cluster        :p3d, 2025-06-02, 21d
-    Full network rollout (all regions, all cells)  :p3a, 2025-06-02, 28d
-    Automated retraining DAGs (Airflow)            :p3b, 2025-06-09, 14d
-    Topology change event-driven retraining        :p3c, 2025-06-16, 14d
-    Flink pipeline migration to production         :p3e_flink, 2025-06-16, 21d
-    Feast online store activation                  :p3e_feast, 2025-06-16, 21d
-    TMF642/628 Open API integration (ServiceNow)   :p3e, 2025-06-16, 21d
-    SHAP-to-operational language alert card v2     :p3f, 2025-06-23, 14d
-    MLflow model registry governance process       :p3g, 2025-07-07, 14d
-    Closed-loop pilot: auto-remediation (1 fault)  :p3h, 2025-07-21, 42d
-    ★ GATE 3: Sub-5-min detection, 10K+ cells      :milestone, m3, 2025-09-01, 1d
+    section Phase 3 - LSTM-VAE Shadow (Months 6-12)
+    LSTM-VAE training per cell-type cluster           :p3d, 2025-06-02, 21d
+    Full network rollout all regions                  :p3a, 2025-06-02, 28d
+    Automated retraining DAGs Airflow                 :p3b, 2025-06-09, 14d
+    Topology change event-driven retraining           :p3c, 2025-06-16, 14d
+    Flink pipeline migration to production            :p3e_flink, 2025-06-16, 21d
+    Feast online store activation                     :p3e_feast, 2025-06-16, 21d
+    TMF642 and 628 Open API integration               :p3e, 2025-06-16, 21d
+    SHAP-to-operational language alert card v2        :p3f, 2025-06-23, 14d
+    MLflow model registry governance process          :p3g, 2025-07-07, 14d
+    Closed-loop pilot auto-remediation 1 fault        :p3h, 2025-07-21, 42d
+    GATE 3 Sub-5-min detection 10K cells              :milestone, m3, 2025-09-01, 1d
 
-    section 🌐 Phase 4: Progressive Rollout
-    Ensemble model combiner + governance sign-off  :p4a, 2025-09-01, 21d
-    Hypercare & performance review                 :p4b, 2025-09-01, 42d
-    ★ GO-LIVE: Full autonomous alerting            :milestone, m4, 2025-10-13, 1d
+    section Phase 4 - Progressive Rollout
+    Ensemble model combiner and governance sign-off   :p4a, 2025-09-01, 21d
+    Hypercare and performance review                  :p4b, 2025-09-01, 42d
+    GO-LIVE Full autonomous alerting                  :milestone, m4, 2025-10-13, 1d
 ```
 
 **Phase 1 (Weeks 1–4)**
