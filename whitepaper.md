@@ -838,88 +838,86 @@ erDiagram
 ```mermaid
 sequenceDiagram
     autonumber
-    participant gNB as gNB / O-DU<br/>(E2 Agent)
-    participant xApp as KPM Monitor xApp<br/>(Near-RT RIC)
-    participant Kafka as Apache Kafka<br/>(ran.kpi.raw)
-    participant Flink as Flink Pipeline<br/>(Validate + Feature Eng.)
-    participant Feast as Feast Online Store<br/>(Redis)
-    participant ONNX as ONNX Runtime<br/>(embedded in Flink)
+    participant gNB as gNB / O-DU (E2 Agent)
+    participant xApp as KPM Monitor xApp (Near-RT RIC)
+    participant Kafka as Apache Kafka (ran.kpi.raw)
+    participant Flink as Flink Pipeline (Validate + Feature Eng)
+    participant Feast as Feast Online Store (Redis)
+    participant ONNX as ONNX Runtime (embedded in Flink)
     participant Agg as Hierarchical Aggregator
-    participant Supp as Alert Suppressor<br/>(MW Calendar / CM Log)
-    participant NOC as NOC Dashboard<br/>+ ServiceNow
+    participant Supp as Alert Suppressor (MW Calendar / CM Log)
+    participant NOC as NOC Dashboard + ServiceNow
     participant Analyst as NOC Analyst
 
-    Note over gNB, Analyst: ⚡ HOT PATH — Target: sub-5-minute end-to-end
+    Note over gNB, Analyst: HOT PATH - Target sub-5-minute end-to-end
 
-    gNB->>xApp: E2SM-KPM Indication<br/>cell_id, timestamp, 50 PM counters<br/>[t=0ms, every 60s]
+    gNB->>xApp: E2SM-KPM Indication cell_id, timestamp, 50 PM counters [t=0ms, every 60s]
 
-    xApp->>Kafka: Produce Avro record<br/>Topic: ran.kpi.raw<br/>[t=~5ms]
+    xApp->>Kafka: Produce Avro record Topic ran.kpi.raw [t=5ms]
 
-    Kafka->>Flink: Consumer poll<br/>Avro deserialization<br/>[t=~10ms]
+    Kafka->>Flink: Consumer poll Avro deserialization [t=10ms]
 
     rect rgb(240, 248, 255)
-        Note over Flink: STAGE 1: Validation (~15ms)
-        Flink->>Flink: Pandera schema check<br/>valid range checks<br/>null / counter-reset detection
+        Note over Flink: STAGE 1 Validation (15ms)
+        Flink->>Flink: Pandera schema check, valid range checks, null / counter-reset detection
         alt Validation FAIL
-            Flink->>Kafka: Publish to DLQ<br/>ran.kpi.deadletter
-            Note over Flink: Alert: data quality issue on cell_id
+            Flink->>Kafka: Publish to DLQ ran.kpi.deadletter
+            Note over Flink: Alert - data quality issue on cell_id
         end
     end
 
     rect rgb(240, 255, 240)
-        Note over Flink, Feast: STAGE 2: Feature Engineering (~50ms)
-        Flink->>Feast: Lookup online features<br/>cell_id → rolling stats (1h/4h/24h)<br/>peer group baseline stats
-        alt Feature cache HIT (normal path)
-            Feast-->>Flink: feature_vector float32[150]<br/>includes: rolling_mean, peer_zscore,<br/>dod_ratio, wow_ratio, tod_encoding<br/>[Redis latency: ~3ms]
-        else Feature cache MISS (cold start / new cell)
-            Feast-->>Flink: MISS → use global fallback<br/>cluster-average baseline
-            Note over Flink: Log: cold-start fallback for cell_id<br/>Schedule: baseline warm-up job
+        Note over Flink, Feast: STAGE 2 Feature Engineering (50ms)
+        Flink->>Feast: Lookup online features cell_id - rolling stats 1h/4h/24h, peer group baseline
+        alt Feature cache HIT
+            Feast-->>Flink: feature_vector float32[150] including rolling_mean, peer_zscore, dod_ratio [Redis 3ms]
+        else Feature cache MISS (cold start)
+            Feast-->>Flink: MISS - use global fallback cluster-average baseline
+            Note over Flink: Log cold-start fallback, schedule baseline warm-up
         end
-        Flink->>Flink: Compute rate-of-change features<br/>Append TOD / DOW encodings<br/>Apply KPI semantic layer normalization
+        Flink->>Flink: Compute rate-of-change, append TOD/DOW encodings, apply KPI semantic layer
     end
 
     rect rgb(255, 248, 220)
-        Note over Flink, ONNX: STAGE 3: Anomaly Scoring (~5ms)
-        Flink->>ONNX: feature_vector float32[150]<br/>cell_id, model_version
-        ONNX->>ONNX: Inference pass<br/>Phase 1: Isolation Forest (0.19ms)<br/>Phase 2: RF + LSTM-VAE (2.5ms)<br/>Phase 3: Ensemble (5ms max)
-        Note over ONNX: Phase 1: w=(1.0, 0.0, 0.0) Isolation Forest only. Phase 2 onward: weights tuned on validation set
-        ONNX-->>Flink: Per-tier sigmoid normalization (pre-processing step)<br/>shap_values float32[150]<br/>top3_contributing_kpis<br/>Example: anomaly_score: 0.87 → Major (≥ 0.75), anomaly_score: 0.93 → Critical (≥ 0.90)
-        Flink->>Flink: Score convention (three stages):<br/>Raw IF decision_function: ∈ ℝ (negative = more anomalous)<br/>After per-tier sigmoid normalization: ∈ [0, 1] (higher = more anomalous)<br/>Final AnomalyScore: weighted average of normalized tier scores ∈ [0, 1]
-        Note over Flink: Score published to ran.anomaly.scores<br/>[t=~80ms cumulative]
+        Note over Flink, ONNX: STAGE 3 Anomaly Scoring (5ms)
+        Flink->>ONNX: feature_vector float32[150] cell_id, model_version
+        ONNX->>ONNX: Inference - Phase 1 IF 0.19ms, Phase 2 RF+LSTM 2.5ms, Phase 3 Ensemble 5ms max
+        ONNX-->>Flink: Sigmoid-normalized score [0,1], SHAP values, top-3 contributing KPIs
+        Flink->>Flink: Score convention - raw IF negative=more anomalous, after sigmoid [0,1] higher=more anomalous
+        Note over Flink: Score published to ran.anomaly.scores [t=80ms cumulative]
     end
 
     rect rgb(255, 240, 240)
-        Note over Flink, Agg: STAGE 4: Hierarchical Aggregation (~20ms)
+        Note over Flink, Agg: STAGE 4 Hierarchical Aggregation (20ms)
         Flink->>Agg: sector_score, cell_id, site_id
-        Agg->>Agg: Update sector → cell → site scores<br/>k-of-n promotion logic<br/>(e.g., 2-of-3 sectors → site alert)
-        Agg->>Agg: Duplicate suppression<br/>(suppress sector alert if site alert promoted)
-        alt Score below threshold (normal)
-            Note over Agg: No alert emitted. Score logged.<br/>anomaly_score: &lt; 0.60 → Normal
-        else Score above threshold (anomaly candidate)
-            Agg->>Supp: Check suppression rules<br/>cell_id, timestamp, alert_type
-            Supp->>Supp: Query: active maintenance windows<br/>Query: CM changes last 24h<br/>Query: SW upgrade in progress
+        Agg->>Agg: Update sector-cell-site scores, k-of-n promotion, duplicate suppression
+        alt Score below threshold
+            Note over Agg: No alert emitted. Score logged.
+        else Score above threshold
+            Agg->>Supp: Check suppression rules cell_id, timestamp, alert_type
+            Supp->>Supp: Query maintenance windows, CM changes 24h, SW upgrade status
             alt Suppression rule MATCH
-                Supp-->>Agg: SUPPRESS<br/>reason: "Planned maintenance until 04:00"
+                Supp-->>Agg: SUPPRESS reason Planned maintenance
                 Note over Supp: Anomaly logged but not alerted
             else No suppression
                 Supp-->>Agg: PASS
-                Agg->>Kafka: Publish enriched alert<br/>Topic: ran.alerts<br/>Thresholds: Minor ≥ 0.60, Major ≥ 0.75, Critical ≥ 0.90<br/>All scores [0,1] sigmoid-normalized<br/>[t=~120ms]
+                Agg->>Kafka: Publish enriched alert Topic ran.alerts [t=120ms]
             end
         end
     end
 
     rect rgb(255, 245, 235)
-        Note over Kafka, NOC: STAGE 5: NOC Alert Delivery (~200ms)
-        Kafka->>NOC: Alert card (JSON)<br/>anomaly_severity, cell_id, site_id<br/>top3_kpi_deviations (in plain English)<br/>probable_fault_category<br/>recommended_first_action<br/>historical_precedent
-        NOC->>NOC: Display on anomaly map<br/>Auto-create ServiceNow ticket (P2/P3)<br/>Push SMS/email to on-call engineer
-        Note over NOC: ✅ TOTAL LATENCY: ~300ms (E2 path)<br/>End-to-end from KPI collection: &lt; 5 minutes
+        Note over Kafka, NOC: STAGE 5 NOC Alert Delivery (200ms)
+        Kafka->>NOC: Alert card JSON - severity, cell_id, top-3 KPI deviations, fault category, recommended action
+        NOC->>NOC: Display on anomaly map, auto-create ServiceNow ticket, push SMS/email
+        Note over NOC: TOTAL LATENCY 300ms E2 path. End-to-end under 5 minutes.
     end
 
-    Note over gNB, Analyst: 🔄 FEEDBACK LOOP (async — hours to days)
-    Analyst->>NOC: Mark alert as TRUE_POSITIVE or FALSE_POSITIVE<br/>Add fault category confirmation
-    NOC->>Feast: Write confirmed label to offline store<br/>(async, non-blocking)
-Note over Feast: Labels accumulate → trigger weekly supervised retraining DAG
-Note over gNB, Analyst: 🧊 COLD PATH NOTE<br/>O1 PM files arrive every 15 min with ~4–8 min transfer and processing lag.<br/>Parser normalizes XML → Avro → injects into ran.kpi.raw.<br/>Same Flink pipeline processes; inherits 21–30 min total detection lag.
+    Note over gNB, Analyst: FEEDBACK LOOP (async - hours to days)
+    Analyst->>NOC: Mark alert as TRUE_POSITIVE or FALSE_POSITIVE
+    NOC->>Feast: Write confirmed label to offline store (async)
+    Note over Feast: Labels accumulate - trigger weekly supervised retraining DAG
+    Note over gNB, Analyst: COLD PATH NOTE - O1 PM files every 15 min, 21-30 min total detection lag
 ```
 > **Key takeaway:** The architecture's single most important decision is embedding ONNX inference inside Flink. A 200ms network hop to an external scorer is acceptable on latency grounds — but it creates a single point of failure during NOC incidents and violates near-RT RIC isolation requirements. The embedded pattern eliminates both risks.
 
