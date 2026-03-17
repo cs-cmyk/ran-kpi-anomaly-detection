@@ -1,6 +1,10 @@
-utils.py
-========
+# Companion Code
 
+All source files for the RAN KPI Anomaly Detection pipeline. Run `./run_pipeline.sh` to execute the full pipeline.
+
+## utils.py
+
+```python
 """
 utils.py — Shared utilities for RAN KPI Anomaly Detection pipeline
 ===================================================================
@@ -93,10 +97,13 @@ def compute_event_based_recall(
     )
     return event_recall
 
+```
 
-01_synthetic_data.py
-====================
+---
 
+## 01_synthetic_data.py
+
+```python
 #!/usr/bin/env python3
 """
 01_synthetic_data.py — RAN KPI Anomaly Detection: Synthetic Data Generation
@@ -172,7 +179,7 @@ logger = logging.getLogger("synthetic_data")
 
 # ---------------------------------------------------------------------------
 # Global reproducibility seed — all np.random calls MUST use RNG derived here
-# See Coursebook Ch. 25: reproducibility in time-series experiments
+# Fixed seed for reproducibility — ensures identical synthetic datasets across runs
 # ---------------------------------------------------------------------------
 RANDOM_SEED: int = 42
 RNG = np.random.default_rng(RANDOM_SEED)
@@ -1314,10 +1321,13 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 
+```
 
-02_feature_engineering.py
-=========================
+---
 
+## 02_feature_engineering.py
+
+```python
 """
 02_feature_engineering.py — RAN KPI Anomaly Detection Feature Pipeline
 =======================================================================
@@ -2915,10 +2925,13 @@ if __name__ == "__main__":
     if "is_anomaly" in test_df.columns:
         print(f"  Test anomaly rate : {test_df['is_anomaly'].mean()*100:.2f}%")
 
+```
 
-03_model_training.py
-====================
+---
 
+## 03_model_training.py
+
+```python
 """
 03_model_training.py — RAN KPI Anomaly Detection: Model Training
 =================================================================
@@ -5488,10 +5501,13 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 
+```
 
-04_evaluation.py
-================
+---
 
+## 04_evaluation.py
+
+```python
 """
 04_evaluation.py — RAN KPI Anomaly Detection: Evaluation & Visualisation
 =========================================================================
@@ -7820,10 +7836,13 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 
+```
 
-05_production_patterns.py
-=========================
+---
 
+## 05_production_patterns.py
+
+```python
 """
 05_production_patterns.py — Real-Time RAN KPI Anomaly Detection
 ===============================================================
@@ -9725,10 +9744,12 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 
+```
+
+---
 
 
-run_pipeline.sh
-===============
+## run_pipeline.sh
 
 ```bash
 #!/usr/bin/env bash
@@ -9745,8 +9766,9 @@ echo "=== Pipeline complete. Results in data/ and results/ ==="
 echo "=== To run production pattern demos: python3 05_production_patterns.py ==="
 ```
 
-requirements.txt
-================
+---
+
+## requirements.txt
 
 ```
 pandas>=2.0.0
@@ -9758,8 +9780,9 @@ matplotlib>=3.7.0
 seaborn>=0.12.0
 ```
 
-requirements-optional.txt
-=========================
+---
+
+## requirements-optional.txt
 
 ```
 torch>=2.0.0
