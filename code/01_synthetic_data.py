@@ -73,7 +73,7 @@ logger = logging.getLogger("synthetic_data")
 
 # ---------------------------------------------------------------------------
 # Global reproducibility seed — all np.random calls MUST use RNG derived here
-# See Coursebook Ch. 25: reproducibility in time-series experiments
+# Fixed seed for reproducibility — ensures identical synthetic datasets across runs
 # ---------------------------------------------------------------------------
 RANDOM_SEED: int = 42
 RNG = np.random.default_rng(RANDOM_SEED)
