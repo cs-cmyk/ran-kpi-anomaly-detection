@@ -1,0 +1,7 @@
+# requirements-optional.txt — Optional dependencies for LSTM tier and REST serving
+# Only needed when enabling Phase 3 (LSTM Autoencoder) or the FastAPI endpoint.
+# Install: pip install -r requirements-optional.txt
+
+torch>=2.0.0
+fastapi>=0.100.0
+uvicorn>=0.23.0
