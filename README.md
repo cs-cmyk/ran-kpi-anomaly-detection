@@ -73,7 +73,7 @@ Each phase runs in shadow mode before promotion. Label gates control transitions
 
 | Role | Start with | Key sections |
 |------|-----------|-------------|
-| CTO / VP Engineering | Executive Summary → §1 Business Case | §10 Limitations, §11 Implementation Roadmap |
+| Engineering Leadership | Executive Summary → §1 Business Case | §10 Limitations, §11 Implementation Roadmap |
 | NOC Manager | §1 Business Case → §8 Evaluation | §6 System Design, §9 Production Considerations |
 | RF Engineer | §3 Data Requirements → §5 Proposed Approach | §6 System Design, §7 Implementation Walkthrough |
 | Data Scientist / ML Engineer | §5 Proposed Approach → §7 Implementation Walkthrough | §3 Data, §8 Evaluation, companion code |
