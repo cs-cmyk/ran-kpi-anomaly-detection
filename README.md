@@ -14,13 +14,14 @@ Replace static threshold alerting with ML-based anomaly detection — from zero 
 | File | Description |
 |------|-------------|
 | [`whitepaper.md`](whitepaper.md) | Full whitepaper (~18,000 words) covering business case, architecture, implementation, and production deployment |
-| [`01_synthetic_data.py`](01_synthetic_data.py) | Generates realistic synthetic RAN PM counter data with injected anomalies |
-| [`02_feature_engineering.py`](02_feature_engineering.py) | Temporal features, peer-group z-scores, rolling statistics, train/val/test splits |
-| [`03_model_training.py`](03_model_training.py) | Isolation Forest → Random Forest → LSTM Autoencoder cascade training |
-| [`04_evaluation.py`](04_evaluation.py) | Per-tier and cascade metrics, confusion matrices, bootstrap confidence intervals |
-| [`05_production_patterns.py`](05_production_patterns.py) | BentoML serving, Flink-compatible features, drift detection, Prometheus metrics |
-| [`utils.py`](utils.py) | Shared utilities (event-based recall, logging, constants) |
-| [`run_pipeline.sh`](run_pipeline.sh) | Runs the full 01→04 pipeline end-to-end |
+| [`code/01_synthetic_data.py`](01_synthetic_data.py) | Generates realistic synthetic RAN PM counter data with injected anomalies |
+| [`code/02_feature_engineering.py`](02_feature_engineering.py) | Temporal features, peer-group z-scores, rolling statistics, train/val/test splits |
+| [`code/03_model_training.py`](03_model_training.py) | Isolation Forest → Random Forest → LSTM Autoencoder cascade training |
+| [`code/04_evaluation.py`](04_evaluation.py) | Per-tier and cascade metrics, confusion matrices, bootstrap confidence intervals |
+| [`code/05_production_patterns.py`](05_production_patterns.py) | BentoML serving, Flink-compatible features, drift detection, Prometheus metrics |
+| [`code/utils.py`](utils.py) | Shared utilities (event-based recall, logging, constants) |
+| [`code/run_pipeline.sh`](run_pipeline.sh) | Runs the full 01→04 pipeline end-to-end |
+| [`code/requirements.txt`](requirements.txt) | Python package dependencies |
 
 ## Quick start
 
