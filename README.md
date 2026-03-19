@@ -86,8 +86,6 @@ This whitepaper is part of the [Full-Stack ML Coursebook](https://github.com/cs-
 
 This work is licensed under [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International](LICENSE). You may share and adapt the material with attribution, but not for commercial purposes. Adaptations must be distributed under the same licence.
 
----
-
 ## Citation
 
 If referencing this work, please cite as:
