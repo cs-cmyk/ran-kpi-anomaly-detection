@@ -14,9 +14,6 @@ Replace static threshold alerting with ML-based anomaly detection — from zero 
 | File | Description |
 |------|-------------|
 | [`whitepaper.md`](whitepaper.md) | Full whitepaper (~18,000 words) covering business case, architecture, implementation, and production deployment |
-| [`code.md`](code.md) | All companion code in a single navigable document |
-| [`all-diagrams.md`](all-diagrams.md) | Mermaid architecture and data flow diagrams |
-| [`transcript.md`](transcript.md) | Conference talk walkthrough transcript (~18 min) |
 | [`01_synthetic_data.py`](01_synthetic_data.py) | Generates realistic synthetic RAN PM counter data with injected anomalies |
 | [`02_feature_engineering.py`](02_feature_engineering.py) | Temporal features, peer-group z-scores, rolling statistics, train/val/test splits |
 | [`03_model_training.py`](03_model_training.py) | Isolation Forest → Random Forest → LSTM Autoencoder cascade training |
